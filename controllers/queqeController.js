@@ -1,5 +1,6 @@
 
-var amqp = require('amqplib/callback_api');
+//const amqp = require('amqplib/callback_api');
+const amqp = require('amqplib');
 
 
 class QueqeController {
@@ -15,77 +16,87 @@ class QueqeController {
      * @param {*} req 
      * @param {*} res 
      */
-    async create(req, res){
+    async create(req, res) {
         var { url } = req.body;
         var { queueName } = req.body;
 
-        amqp.connect('amqp://' + url, function (error0, connection) {
-            if (error0) {
-                console.error(error0);
-                return res.status(404).send('queqe not found')
-                //throw error0;
-            }
-            connection.createChannel(function (error1, channel) {
-                if (error1) {
-                    // throw error1;
-                    return res.status(404).send('queqe not found')
-                }
+        let response = {
+            code: '',
+            message: '',
+            queqe: ''
+        }
 
-                channel.assertQueue(queueName, {
-                    durable: true
-                });
-                   // channel.sendToQueue(queueName, Buffer.from(message));
-                    res.status(200).json('queqe create')
-                      // console.log(" [x] Sent %s", message);
+        try {
+
+            const connection = await amqp.connect('amqp://' + url);
+            const channel = await connection.createChannel();
+
+            await channel.assertQueue(queueName, {
+                durable: true
             });
-            setTimeout(function () {
-                connection.close();
-                // process.exit(0);
-            }, 500);
-        });
 
+            await channel.close();
+            await connection.close();
 
+            response.code = 200;
+            response.message = 'queqe created';
+            response.queqe = queueName
+            res.status(200).json(response)
 
+        } catch (error) {
+            console.error(error)
+            response.code = 404;
+            response.message = error.toString();
+            response.queqe = queueName
+            res.status(404).send(response)
+        }
 
     }
 
     /**
-     * crea la cola si no existe y agrega un elemnto a la cola 
+     * crea la cola si no existe y agrega un elemento a la cola 
      * @param {*} req 
      * @param {*} res 
      */
 
-    async send(req, res) {
+    async inserIntoQueue(req, res) {
 
         var { url } = req.body;
         var { queueName } = req.body;
         var { message } = req.body;
 
-        amqp.connect('amqp://' + url, function (error0, connection) {
-            if (error0) {
-                console.error(error0);
-                return res.status(404).send('queqe not found')
-                //throw error0;
-            }
-            connection.createChannel(function (error1, channel) {
-                if (error1) {
-                    // throw error1;
-                    return res.status(404).send('queqe not found')
-                }
+        let response = {
+            code: '',
+            message: '',
+            queqe: ''
+        }
 
-                channel.assertQueue(queueName, {
-                    durable: true
-                });
-                    channel.sendToQueue(queueName, Buffer.from(message));
-                    res.status(200).json('message insert')
-                      // console.log(" [x] Sent %s", message);
+        try {
+
+            const connection = await amqp.connect('amqp://' + url);
+            const channel = await connection.createChannel();
+
+            await channel.assertQueue(queueName, {
+                durable: true
             });
-            setTimeout(function () {
-                connection.close();
-                // process.exit(0);
-            }, 500);
-        });
 
+            channel.sendToQueue(queueName, Buffer.from(message));
+
+            await channel.close();
+            await connection.close();
+
+            response.code = 200;
+            response.message = 'message created';
+            response.queqe = queueName
+            res.status(200).json(response)
+
+        } catch (error) {
+            console.error(error)
+            response.code = 404;
+            response.message = error.toString();
+            response.queqe = queueName
+            res.status(404).send(response)
+        }
     }
 
     /**
@@ -93,7 +104,53 @@ class QueqeController {
      * @param {*} req 
      * @param {*} res 
      */
-    async get(req, res) {
+    async getElementFromQueue(req, res) {
+
+        var { url } = req.body;
+        var { queueName } = req.body;
+
+
+        let response = {
+            code: '',
+            message: '',
+            queqe: ''
+        }
+
+        try {
+
+            const connection = await amqp.connect('amqp://' + url);
+            const channel = await connection.createChannel();
+
+            await channel.assertQueue(queueName);
+
+            const message = await channel.get(queueName);
+            if (message) {
+                response.code = 200;
+                response.message = message.content.toString();
+                response.queqe = queueName
+                res.status(200).json(response)
+                channel.ack(message);
+            } else {
+                response.code = 200;
+                response.message = '';
+                response.queqe = queueName
+                res.status(200).json(response)
+            }
+
+            await channel.close();
+            await connection.close();
+
+        } catch (error) {
+            console.error(error)
+            response.code = 404;
+            response.message = error.toString();
+            response.queqe = queueName
+            res.status(404).send(response)
+        }
+
+
+
+
 
     }
 
