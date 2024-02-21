@@ -161,6 +161,42 @@ class QueqeController {
      */
     async deleteQueqe(req, res) {
 
+
+        var { url } = req.body;
+        var { queueName } = req.body;
+
+
+        let response = {
+            code: '',
+            message: '',
+            queqe: ''
+        }
+
+        try {
+
+            const connection = await amqp.connect('amqp://' + url);
+            const channel = await connection.createChannel();
+
+            await channel.assertQueue(queueName);
+
+            await channel.deleteQueue(queueName);
+
+            response.code = 200;
+            response.message = 'queqe deleted';
+            response.queqe = queueName
+            res.status(200).json(response)
+
+            await channel.close();
+            await connection.close();
+
+        } catch (error) {
+            console.error(error)
+            response.code = 404;
+            response.message = error.toString();
+            response.queqe = queueName
+            res.status(404).send(response)
+        }
+
     }
 
 }
